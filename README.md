@@ -82,7 +82,7 @@ SimCity/
 ```bash
 # Clone the repository
 git clone https://github.com/MingNhayMua/CS105_SimCityClone.git
-cd SimCity
+cd CS105_SimCityClone
 
 # Install dependencies
 npm install
