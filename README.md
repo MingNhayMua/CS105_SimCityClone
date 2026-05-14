@@ -74,8 +74,15 @@ SimCity/
 
 ### Prerequisites
 
-- [Node.js](https://nodejs.org/) (v18 or higher)
-- npm (included with Node.js)
+- **Node.js** (v18 or higher) — [Download tại đây](https://nodejs.org/)
+  - Chọn bản **LTS** (khuyến nghị)
+  - Khi cài trên **Windows**: tick chọn ✅ **"Add to PATH"** để dùng được lệnh `npm` trong terminal
+  - Sau khi cài xong, **khởi động lại terminal** rồi kiểm tra:
+    ```bash
+    node -v    # Hiện v18.x.x hoặc cao hơn
+    npm -v     # Hiện 9.x.x hoặc cao hơn
+    ```
+  - Nếu vẫn báo `npm is not recognized`, mở lại installer Node.js → chọn **Repair**
 
 ### Installation
 
