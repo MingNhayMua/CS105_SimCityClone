@@ -2,6 +2,7 @@ import * as THREE from 'three'
 import { createCamera } from './camera.js'
 import { createAssetInstance } from './assets/assetFactory.js'
 import { preloadModels, getCachedModel } from './assets/modelLoader.js'
+import { createBillboard } from './assets/billboardFactory.js'
 import { getRoadConfig } from './assets/roadHelper.js'
 import { VehicleGraph } from './vehicles/vehicleGraph.js'
 import { createDayNightCycle } from './simulation/dayNightCycle.js'
@@ -36,6 +37,10 @@ export function createCityScene() {
     let vehicleGraph = null;
     let landmarks = [];
 
+    let currentViewMode = 'normal';
+    const originalMaterials = new Map();
+    let xrayPointClouds = [];
+
     let onObjectSelected = undefined;
 
     let sun = null;
@@ -49,18 +54,47 @@ export function createCityScene() {
     const hoverGeometry = new THREE.BoxGeometry(0.8, 0.3, 0.8);
 
     // TransformControls
-    const transformControls = new TransformControls(camera.camera, renderer.domElement);
+    let transformControls = null;
+    let transformHelper = null;
     let transformTarget = null;
 
-    transformControls.addEventListener('dragging-changed', (event) => {
-        camera.setEnabled(!event.value);
-    });
-
-    transformControls.addEventListener('change', () => {
-        if (transformTarget) {
-            updateTransformUI(transformTarget);
+    function initTransformControls() {
+        if (transformControls) {
+            transformControls.dispose();
         }
-    });
+        transformControls = new TransformControls(camera.camera, renderer.domElement);
+        transformControls.setSize(3);
+
+        transformControls.addEventListener('dragging-changed', (event) => {
+            camera.setEnabled(!event.value);
+        });
+
+        transformControls.addEventListener('change', () => {
+            if (transformTarget) {
+                updateTransformUI(transformTarget);
+            }
+        });
+
+        // Three.js v0.184+: TransformControls extends Controls, not Object3D
+        // Must use getHelper() to get the visual gizmo Object3D
+        transformHelper = transformControls.getHelper();
+
+        // Make gizmo always render on top so it's never hidden behind models
+        transformHelper.renderOrder = 999;
+        transformHelper.traverse((child) => {
+            child.userData._isHelper = true;
+            if (child.isMesh || child.isLine) {
+                child.renderOrder = 999;
+                if (child.material) {
+                    child.material.depthTest = false;
+                    child.material.depthWrite = false;
+                }
+            }
+        });
+
+        scene.add(transformHelper);
+        console.log('[DEBUG] ✅ TransformControls helper added to scene');
+    }
 
     // ==========================================
     // City data sync
@@ -73,8 +107,8 @@ export function createCityScene() {
         buildings = [];
         landmarks = [];
 
-        // TransformControls
-        scene.add(transformControls);
+        // TransformControls — recreate after scene.clear()
+        initTransformControls();
 
         // Vehicle graph
         vehicleGraph = new VehicleGraph(city.size);
@@ -195,11 +229,17 @@ export function createCityScene() {
     // ==========================================
 
     function placeLandmark(landmarkId, x, y) {
+        console.log('[DEBUG] placeLandmark called:', landmarkId, 'at', x, y);
         const entry = LANDMARK_CATALOG.find(l => l.id === landmarkId);
-        if (!entry) return;
+        if (!entry) { console.log('[DEBUG] ❌ Landmark entry not found for id:', landmarkId); return; }
+
+        if (entry.isBillboard) {
+            openBillboardFilePicker(x, y, entry);
+            return;
+        }
 
         const cached = getCachedModel(entry.file);
-        if (!cached) return;
+        if (!cached) { console.log('[DEBUG] ❌ Model not cached for:', entry.file); return; }
 
         const model = cached.clone();
 
@@ -239,6 +279,7 @@ export function createCityScene() {
 
         scene.add(wrapper);
         landmarks.push(wrapper);
+        console.log('[DEBUG] ✅ Landmark placed! wrapper.userData:', JSON.stringify(wrapper.userData), '| landmarks count:', landmarks.length);
     }
 
     function findLandmarkAncestor(object) {
@@ -249,6 +290,54 @@ export function createCityScene() {
         return null;
     }
 
+    function openBillboardFilePicker(x, y, entry) {
+        const input = document.createElement('input');
+        input.type = 'file';
+        input.accept = 'image/*';
+        input.style.display = 'none';
+        document.body.appendChild(input);
+
+        input.addEventListener('change', (e) => {
+            const file = e.target.files[0];
+            if (!file) { document.body.removeChild(input); return; }
+
+            const img = new Image();
+            img.onload = () => {
+                const canvas = document.createElement('canvas');
+                canvas.width = img.width;
+                canvas.height = img.height;
+                const ctx = canvas.getContext('2d');
+                ctx.drawImage(img, 0, 0);
+
+                const texture = new THREE.CanvasTexture(canvas);
+                texture.colorSpace = THREE.SRGBColorSpace;
+                texture.needsUpdate = true;
+
+                const model = createBillboard(texture);
+                const wrapper = new THREE.Group();
+                wrapper.userData = {
+                    id: 'landmark',
+                    landmarkId: 'billboard',
+                    landmarkName: 'Billboard',
+                    x, y
+                };
+                wrapper.add(model);
+                wrapper.position.set(x, 0, y);
+                scene.add(wrapper);
+                landmarks.push(wrapper);
+                console.log('[DEBUG] ✅ Billboard placed with texture');
+                document.body.removeChild(input);
+            };
+            img.onerror = () => {
+                console.log('[DEBUG] ❌ Failed to load billboard image');
+                document.body.removeChild(input);
+            };
+            img.src = URL.createObjectURL(file);
+        });
+
+        input.click();
+    }
+
     // ==========================================
     // TransformControls
     // ==========================================
@@ -256,6 +345,8 @@ export function createCityScene() {
     function attachTransform(object) {
         transformTarget = object;
         transformControls.attach(object);
+        // Default to translate mode on ground plane
+        setTransformControlsMode('translate');
         updateTransformUI(object);
     }
 
@@ -277,6 +368,23 @@ export function createCityScene() {
 
     function setTransformControlsMode(mode) {
         transformControls.setMode(mode);
+
+        if (mode === 'translate') {
+            // Di chuyển chỉ trên mặt đất (X và Z), không cho bay lên trời
+            transformControls.showX = true;
+            transformControls.showY = false;
+            transformControls.showZ = true;
+        } else if (mode === 'rotate') {
+            // Xoay chỉ quanh trục Y (xoay trên mặt đất)
+            transformControls.showX = false;
+            transformControls.showY = true;
+            transformControls.showZ = false;
+        } else if (mode === 'scale') {
+            // Scale đều cả 3 trục
+            transformControls.showX = true;
+            transformControls.showY = true;
+            transformControls.showZ = true;
+        }
     }
 
     function updateTransformUI(object) {
@@ -369,13 +477,22 @@ export function createCityScene() {
         }
 
         selectedObject = raycastObject(event) || null;
+        console.log('[DEBUG] onMouseDown — selectedObject:', selectedObject);
+        console.log('[DEBUG] activeToolID:', activeToolID);
+        console.log('[DEBUG] landmarks array:', landmarks.length, landmarks);
 
         if (activeToolID === 'mouse' && selectedObject) {
             const landmarkObj = findLandmarkAncestor(selectedObject);
+            console.log('[DEBUG] findLandmarkAncestor result:', landmarkObj);
+            if (selectedObject.userData) {
+                console.log('[DEBUG] selectedObject.userData:', JSON.stringify(selectedObject.userData));
+            }
             if (landmarkObj) {
+                console.log('[DEBUG] ✅ Attaching transform to landmark:', landmarkObj.userData);
                 attachTransform(landmarkObj);
                 document.getElementById('transform-bar')?.classList.remove('hidden');
             } else {
+                console.log('[DEBUG] ❌ No landmark ancestor found — detaching');
                 detachTransform();
                 document.getElementById('transform-bar')?.classList.add('hidden');
             }
@@ -417,6 +534,7 @@ export function createCityScene() {
                 if (!hasBuildingMesh) {
                     hoverObject = new THREE.Mesh(hoverGeometry, hoverMaterial);
                     hoverObject.position.set(x, 0.15, y);
+                    hoverObject.userData._isHelper = true;
                     scene.add(hoverObject);
                 }
             }
@@ -448,11 +566,29 @@ export function createCityScene() {
     // ==========================================
 
     document.addEventListener('keydown', (e) => {
+        console.log('[DEBUG] keydown:', e.key, '| transformTarget:', !!transformTarget);
+
+        if (e.key === '1') { setViewMode('normal'); window.updateViewModeBtns?.('normal'); }
+        if (e.key === '2') { setViewMode('blueprint'); window.updateViewModeBtns?.('blueprint'); }
+        if (e.key === '3') { setViewMode('xray'); window.updateViewModeBtns?.('xray'); }
+
         if (!transformTarget) return;
         switch (e.key.toLowerCase()) {
-            case 't': setTransformControlsMode('translate'); updateTransformBtns('translate'); break;
-            case 'r': setTransformControlsMode('rotate'); updateTransformBtns('rotate'); break;
-            case 's': setTransformControlsMode('scale'); updateTransformBtns('scale'); break;
+            case 't':
+                console.log('[DEBUG] Switching to TRANSLATE mode');
+                setTransformControlsMode('translate');
+                updateTransformBtns('translate');
+                break;
+            case 'r':
+                console.log('[DEBUG] Switching to ROTATE mode');
+                setTransformControlsMode('rotate');
+                updateTransformBtns('rotate');
+                break;
+            case 's':
+                console.log('[DEBUG] Switching to SCALE mode');
+                setTransformControlsMode('scale');
+                updateTransformBtns('scale');
+                break;
             case 'escape':
                 detachTransform();
                 document.getElementById('transform-bar')?.classList.add('hidden');
@@ -463,6 +599,135 @@ export function createCityScene() {
     function updateTransformBtns(mode) {
         document.querySelectorAll('.tf-btn').forEach(b => b.classList.remove('active'));
         document.getElementById(`btn-tf-${mode}`)?.classList.add('active');
+    }
+
+    // ==========================================
+    // View Modes (Normal / Blueprint / X-Ray)
+    // ==========================================
+
+    function setViewMode(mode) {
+        if (currentViewMode === 'xray') {
+            cleanupXray();
+        }
+        if (currentViewMode === 'blueprint') {
+            cleanupBlueprint();
+        }
+
+        currentViewMode = mode;
+
+        switch (mode) {
+            case 'normal':
+                restoreAllMaterials();
+                break;
+            case 'blueprint':
+                applyBlueprint();
+                break;
+            case 'xray':
+                applyXray();
+                break;
+        }
+    }
+
+    function applyBlueprint() {
+        scene.traverse(child => {
+            if (!child.isMesh) return;
+            if (child.userData._isHelper) return;
+
+            if (!originalMaterials.has(child)) {
+                originalMaterials.set(child, child.material);
+            }
+
+            if (Array.isArray(child.material)) {
+                child.material = child.material.map(m => {
+                    const c = m.clone();
+                    c.wireframe = true;
+                    c.color = new THREE.Color(0x4488ff);
+                    c.map = null;
+                    return c;
+                });
+            } else {
+                const c = child.material.clone ? child.material.clone() : new THREE.MeshBasicMaterial();
+                c.wireframe = true;
+                c.color = new THREE.Color(0x4488ff);
+                c.map = null;
+                child.material = c;
+            }
+        });
+    }
+
+    function applyXray() {
+        const colorMap = {
+            'residential': 0x44ff88,
+            'commercial': 0xff4466,
+            'industrial': 0xffcc44,
+            'road': 0xffffff,
+            'grass': 0x448844,
+            'landmark': 0xcc88ff,
+        };
+
+        scene.traverse(child => {
+            if (!child.isMesh) return;
+            if (child.userData._isHelper) return;
+
+            if (!originalMaterials.has(child)) {
+                originalMaterials.set(child, child.material);
+            }
+
+            let zoneType = child.userData?.id;
+            if (!zoneType) {
+                let parent = child.parent;
+                while (parent) {
+                    if (parent.userData?.id) { zoneType = parent.userData.id; break; }
+                    parent = parent.parent;
+                }
+            }
+            const color = colorMap[zoneType] || 0x888888;
+
+            child.visible = false;
+
+            if (child.geometry) {
+                const pointsMat = new THREE.PointsMaterial({
+                    color: color,
+                    size: 0.03,
+                    sizeAttenuation: true,
+                });
+                const points = new THREE.Points(child.geometry, pointsMat);
+                points.matrixAutoUpdate = false;
+                child.updateWorldMatrix(true, false);
+                points.matrix.copy(child.matrixWorld);
+                points.userData._isXrayPoint = true;
+
+                scene.add(points);
+                xrayPointClouds.push(points);
+            }
+        });
+    }
+
+    function cleanupBlueprint() {
+        restoreAllMaterials();
+    }
+
+    function cleanupXray() {
+        for (const pc of xrayPointClouds) {
+            pc.material.dispose();
+            scene.remove(pc);
+        }
+        xrayPointClouds = [];
+
+        scene.traverse(child => {
+            if (child.isMesh && !child.userData._isHelper) {
+                child.visible = true;
+            }
+        });
+        restoreAllMaterials();
+    }
+
+    function restoreAllMaterials() {
+        for (const [mesh, mat] of originalMaterials) {
+            mesh.material = mat;
+            mesh.visible = true;
+        }
+        originalMaterials.clear();
     }
 
     // ==========================================
@@ -505,5 +770,6 @@ export function createCityScene() {
         removeLandmark,
         findLandmarkAncestor,
         setTransformControlsMode,
+        setViewMode,
     }
 }

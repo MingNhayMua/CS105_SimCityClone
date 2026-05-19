@@ -59,6 +59,11 @@
                 </div>
                 <div id="landmark-picker-body"></div>
             </div>
+            <div id="view-mode-bar">
+                <button id="vm-normal" class="vm-btn active" onclick="setViewMode('normal')" title="Normal View (1)">🏙️</button>
+                <button id="vm-blueprint" class="vm-btn" onclick="setViewMode('blueprint')" title="Blueprint View (2)">📐</button>
+                <button id="vm-xray" class="vm-btn" onclick="setViewMode('xray')" title="X-Ray View (3)">🔬</button>
+            </div>
         </div>
         <div id="ui-titlebar">
             <div class="titlebar-section">
@@ -141,6 +146,15 @@
         };
         window.closeLandmarkPicker = () => {
             document.getElementById('landmark-picker')?.classList.add('hidden');
+        };
+        window.setViewMode = (mode) => {
+            game.setViewMode(mode);
+            document.querySelectorAll('.vm-btn').forEach(b => b.classList.remove('active'));
+            document.getElementById(`vm-${mode}`)?.classList.add('active');
+        };
+        window.updateViewModeBtns = (mode) => {
+            document.querySelectorAll('.vm-btn').forEach(b => b.classList.remove('active'));
+            document.getElementById(`vm-${mode}`)?.classList.add('active');
         };
         window.setTransformMode = (mode) => {
             game.setTransformMode(mode);

@@ -1,4 +1,5 @@
 export const LANDMARK_CATALOG = [
+    { id: 'billboard',   name: 'Billboard',     file: null,                                   icon: '🖼️', category: 'decoration', isBillboard: true },
     { id: 'stadium',     name: 'Stadium',       file: 'buildings/building-stadium.glb',       icon: '🏟️', category: 'entertainment' },
     { id: 'casino',      name: 'Casino',         file: 'buildings/building-casino.glb',        icon: '🎰', category: 'entertainment' },
     { id: 'temple',      name: 'Temple',         file: 'buildings/building-temple-china.glb',   icon: '🛕', category: 'culture' },

@@ -195,5 +195,6 @@ hideInfoOverlay();
         },
         setSelectedLandmark(id) { selectedLandmarkId = id; },
         setTransformMode(mode) { scene.setTransformControlsMode(mode); },
+        setViewMode(mode) { scene.setViewMode(mode); },
     }
 }

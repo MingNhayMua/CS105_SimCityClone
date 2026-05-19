@@ -646,3 +646,47 @@ body {
     border-color: rgba(200, 150, 255, 0.5);
     box-shadow: 0 0 14px rgba(180, 120, 255, 0.2);
 }
+
+/* ============================================
+   View Mode Bar
+   ============================================ */
+
+#view-mode-bar {
+    position: absolute;
+    top: 12px;
+    right: 12px;
+    display: flex;
+    gap: 4px;
+    padding: 6px;
+    background: rgba(20, 20, 40, 0.85);
+    backdrop-filter: blur(12px);
+    border-radius: 10px;
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.4);
+    z-index: 15;
+}
+
+.vm-btn {
+    width: 36px;
+    height: 36px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: rgba(255, 255, 255, 0.06);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    border-radius: 8px;
+    font-size: 16px;
+    cursor: pointer;
+    transition: all 0.15s ease;
+}
+
+.vm-btn:hover {
+    background: rgba(255, 255, 255, 0.12);
+    border-color: rgba(255, 255, 255, 0.2);
+}
+
+.vm-btn.active {
+    background: rgba(100, 140, 255, 0.25);
+    border-color: rgba(140, 160, 255, 0.5);
+    box-shadow: 0 0 10px rgba(100, 140, 255, 0.2);
+}
