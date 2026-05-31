@@ -428,12 +428,25 @@ export function createCityScene() {
     // Raycasting helpers
     // ==========================================
 
-    function updateRaycaster(event) {
+    const groundPlane = new THREE.Plane(new THREE.Vector3(0, 1, 0), 0);
+    const groundIntersection = new THREE.Vector3();
+
+    function updateRaycasterFromEvent(event) {
         const rect = renderer.domElement.getBoundingClientRect();
         mouse.x = ((event.clientX - rect.left) / rect.width) * 2 - 1;
         mouse.y = -((event.clientY - rect.top) / rect.height) * 2 + 1;
         raycaster.setFromCamera(mouse, camera.camera);
-        return raycaster.intersectObjects(scene.children, true);
+    }
+
+    function raycastGround() {
+        if (raycaster.ray.intersectPlane(groundPlane, groundIntersection)) {
+            const gx = Math.round(groundIntersection.x);
+            const gz = Math.round(groundIntersection.z);
+            if (gx >= 0 && gx < 16 && gz >= 0 && gz < 16) {
+                return { userData: { x: gx, y: gz } };
+            }
+        }
+        return undefined;
     }
 
     function findAncestorWithUserData(object, key) {
@@ -444,19 +457,23 @@ export function createCityScene() {
     }
 
     function raycastObject(event) {
-        const intersections = updateRaycaster(event);
+        updateRaycasterFromEvent(event);
+        const intersections = raycaster.intersectObjects(scene.children, true);
         if (intersections.length > 0) {
-            return findAncestorWithUserData(intersections[0].object, 'id');
+            const obj = findAncestorWithUserData(intersections[0].object, 'id');
+            if (obj) return obj;
         }
-        return undefined;
+        return raycastGround();
     }
 
     function raycastTile(event) {
-        const intersections = updateRaycaster(event);
+        updateRaycasterFromEvent(event);
+        const intersections = raycaster.intersectObjects(scene.children, true);
         if (intersections.length > 0) {
-            return findAncestorWithUserData(intersections[0].object, 'x');
+            const obj = findAncestorWithUserData(intersections[0].object, 'x');
+            if (obj) return obj;
         }
-        return undefined;
+        return raycastGround();
     }
 
     function isPlacementTool() {
