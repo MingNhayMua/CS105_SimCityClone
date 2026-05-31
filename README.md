@@ -164,6 +164,10 @@ npm run preview
 
 This project is for educational purposes.
 
-## 👤 Author
+## 👤 Authors
 
-**Minh** — UIT Computer Graphics Course
+- **Lê Minh Kha** — 23520664
+- **Trần Quang Minh** — 23520958
+- **Đoàn Việt Hoàng** — 23520515
+
+UIT Computer Graphics Course (ĐHMT)
