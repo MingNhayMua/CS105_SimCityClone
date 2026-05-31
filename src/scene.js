@@ -93,6 +93,7 @@ export function createCityScene() {
         });
 
         scene.add(transformHelper);
+        console.log('[DEBUG] ✅ TransformControls helper added to scene');
     }
 
     // ==========================================
@@ -228,8 +229,9 @@ export function createCityScene() {
     // ==========================================
 
     function placeLandmark(landmarkId, x, y) {
+        console.log('[DEBUG] placeLandmark called:', landmarkId, 'at', x, y);
         const entry = LANDMARK_CATALOG.find(l => l.id === landmarkId);
-        if (!entry) return;
+        if (!entry) { console.log('[DEBUG] ❌ Landmark entry not found for id:', landmarkId); return; }
 
         if (entry.isBillboard) {
             openBillboardFilePicker(x, y, entry);
@@ -237,7 +239,7 @@ export function createCityScene() {
         }
 
         const cached = getCachedModel(entry.file);
-        if (!cached) return;
+        if (!cached) { console.log('[DEBUG] ❌ Model not cached for:', entry.file); return; }
 
         const model = cached.clone();
 
@@ -277,6 +279,7 @@ export function createCityScene() {
 
         scene.add(wrapper);
         landmarks.push(wrapper);
+        console.log('[DEBUG] ✅ Landmark placed! wrapper.userData:', JSON.stringify(wrapper.userData), '| landmarks count:', landmarks.length);
     }
 
     function findLandmarkAncestor(object) {
@@ -322,9 +325,11 @@ export function createCityScene() {
                 wrapper.position.set(x, 0, y);
                 scene.add(wrapper);
                 landmarks.push(wrapper);
+                console.log('[DEBUG] ✅ Billboard placed with texture');
                 document.body.removeChild(input);
             };
             img.onerror = () => {
+                console.log('[DEBUG] ❌ Failed to load billboard image');
                 document.body.removeChild(input);
             };
             img.src = URL.createObjectURL(file);
@@ -472,13 +477,22 @@ export function createCityScene() {
         }
 
         selectedObject = raycastObject(event) || null;
+        console.log('[DEBUG] onMouseDown — selectedObject:', selectedObject);
+        console.log('[DEBUG] activeToolID:', activeToolID);
+        console.log('[DEBUG] landmarks array:', landmarks.length, landmarks);
 
         if (activeToolID === 'mouse' && selectedObject) {
             const landmarkObj = findLandmarkAncestor(selectedObject);
+            console.log('[DEBUG] findLandmarkAncestor result:', landmarkObj);
+            if (selectedObject.userData) {
+                console.log('[DEBUG] selectedObject.userData:', JSON.stringify(selectedObject.userData));
+            }
             if (landmarkObj) {
+                console.log('[DEBUG] ✅ Attaching transform to landmark:', landmarkObj.userData);
                 attachTransform(landmarkObj);
                 document.getElementById('transform-bar')?.classList.remove('hidden');
             } else {
+                console.log('[DEBUG] ❌ No landmark ancestor found — detaching');
                 detachTransform();
                 document.getElementById('transform-bar')?.classList.add('hidden');
             }
@@ -552,6 +566,8 @@ export function createCityScene() {
     // ==========================================
 
     document.addEventListener('keydown', (e) => {
+        console.log('[DEBUG] keydown:', e.key, '| transformTarget:', !!transformTarget);
+
         if (e.key === '1') { setViewMode('normal'); window.updateViewModeBtns?.('normal'); }
         if (e.key === '2') { setViewMode('blueprint'); window.updateViewModeBtns?.('blueprint'); }
         if (e.key === '3') { setViewMode('xray'); window.updateViewModeBtns?.('xray'); }
@@ -559,14 +575,17 @@ export function createCityScene() {
         if (!transformTarget) return;
         switch (e.key.toLowerCase()) {
             case 't':
+                console.log('[DEBUG] Switching to TRANSLATE mode');
                 setTransformControlsMode('translate');
                 updateTransformBtns('translate');
                 break;
             case 'r':
+                console.log('[DEBUG] Switching to ROTATE mode');
                 setTransformControlsMode('rotate');
                 updateTransformBtns('rotate');
                 break;
             case 's':
+                console.log('[DEBUG] Switching to SCALE mode');
                 setTransformControlsMode('scale');
                 updateTransformBtns('scale');
                 break;

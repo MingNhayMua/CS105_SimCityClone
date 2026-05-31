@@ -154,7 +154,7 @@ hideInfoOverlay();
     }
 
     function updateTitleBar() {
-        document.getElementById('balance-value').innerHTML = '$' + city.getBalance().toLocaleString();
+        document.getElementById('balance-value').innerHTML = city.getBalance();
         document.getElementById('population-value').innerHTML = city.getPopulation();
 
         const timeEl = document.getElementById('time-value');

@@ -51,7 +51,7 @@ function preloadPathList() {
         }
     }
     for (const landmark of LANDMARK_CATALOG) {
-        if (landmark.file) paths.push(landmark.file);
+        paths.push(landmark.file);
     }
     return [...new Set(paths)];
 }
