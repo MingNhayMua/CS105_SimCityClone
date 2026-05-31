@@ -54,7 +54,6 @@ export const BUILDING_CATALOG = {
         { id: 'pumpjack', file: 'buildings/pumpjack.glb', tier: 1 },
         { id: 'industry-building', file: 'buildings/industry-building.glb', tier: 2 },
         { id: 'industry-factory-old', file: 'buildings/industry-factory-old.glb', tier: 2 },
-        { id: 'windmill', file: 'buildings/windmill.glb', tier: 2 },
         { id: 'industry-factory', file: 'buildings/industry-factory.glb', tier: 3 },
         { id: 'industry-factory-hall', file: 'buildings/industry-factory-hall.glb', tier: 3 },
         { id: 'incineration-plant', file: 'buildings/incineration-plant.glb', tier: 3 },

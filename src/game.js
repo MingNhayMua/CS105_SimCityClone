@@ -1,7 +1,7 @@
 import { createCityScene } from './scene.js';
 import { createCity } from './city.js';
 import { typeLabels } from './utils.js';
-import { hideInfoOverlay, showInfoOverlay } from './ui/infoPanel.js';
+import { hideInfoOverlay, showInfoOverlay as showInfoPanel } from './ui/infoPanel.js';
 
 export async function createGame() {
     let activeToolID = 'mouse';
@@ -170,10 +170,10 @@ hideInfoOverlay();
             return;
         }
 
-        showInfoOverlay({
-            title: typeLabels[tile.building.type] || tile.building.type,
-            html
-        });
+    showInfoPanel({
+        title: typeLabels[tile.building.type] || tile.building.type,
+        html
+    });
     }
 
     // ==========================================
